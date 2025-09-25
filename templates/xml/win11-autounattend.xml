@@ -1,0 +1,142 @@
+<?xml version="1.0" encoding="utf-8"?>
+<unattend xmlns="urn:schemas-microsoft-com:unattend"
+          xmlns:wcm="http://schemas.microsoft.com/WMIConfig/2002/State"
+          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+
+  <!-- Pass 1: windowsPE (Setup UI language + WinPE defaults) -->
+    <settings pass="windowsPE">
+    <component name="Microsoft-Windows-International-Core-WinPE"
+               processorArchitecture="amd64"
+               publicKeyToken="31bf3856ad364e35"
+               language=""
+               versionScope="nonSxS">
+      <?BEGIN_LANG?>
+      <SetupUILanguage>
+        <UILanguage>__LANG__</UILanguage>
+      </SetupUILanguage>
+      <UILanguage>__LANG__</UILanguage>
+      <?END_LANG?>
+    </component>
+
+    <component name="Microsoft-Windows-Setup"
+               processorArchitecture="amd64"
+               publicKeyToken="31bf3856ad364e35"
+               language=""
+               versionScope="nonSxS">
+
+      <?BEGIN_PRODUCT_KEY?>
+      <UserData>
+        <AcceptEula>true</AcceptEula>
+        <ProductKey>
+          <Key>__PRODUCT_KEY__</Key>
+          <WillShowUI>OnError</WillShowUI>
+        </ProductKey>
+      </UserData>
+      <?END_PRODUCT_KEY?>
+
+      <?BEGIN_HWREQ_SKIP?>
+      <RunSynchronous>
+        <RunSynchronousCommand wcm:action="add" wcm:keyValue="1">
+          <Order>1</Order>
+          <Description>Bypass TPM</Description>
+          <Path>cmd /c reg add HKLM\SYSTEM\Setup\LabConfig /v BypassTPMCheck /t REG_DWORD /d 1 /f</Path>
+        </RunSynchronousCommand>
+        <RunSynchronousCommand wcm:action="add" wcm:keyValue="2">
+          <Order>2</Order>
+          <Description>Bypass SecureBoot</Description>
+          <Path>cmd /c reg add HKLM\SYSTEM\Setup\LabConfig /v BypassSecureBootCheck /t REG_DWORD /d 1 /f</Path>
+        </RunSynchronousCommand>
+        <RunSynchronousCommand wcm:action="add" wcm:keyValue="3">
+          <Order>3</Order>
+          <Description>Bypass RAM</Description>
+          <Path>cmd /c reg add HKLM\SYSTEM\Setup\LabConfig /v BypassRAMCheck /t REG_DWORD /d 1 /f</Path>
+        </RunSynchronousCommand>
+        <RunSynchronousCommand wcm:action="add" wcm:keyValue="4">
+          <Order>4</Order>
+          <Description>Bypass CPU</Description>
+          <Path>cmd /c reg add HKLM\SYSTEM\Setup\LabConfig /v BypassCPUCheck /t REG_DWORD /d 1 /f</Path>
+        </RunSynchronousCommand>
+        <RunSynchronousCommand wcm:action="add" wcm:keyValue="5">
+          <Order>5</Order>
+          <Description>Bypass Storage</Description>
+          <Path>cmd /c reg add HKLM\SYSTEM\Setup\LabConfig /v BypassStorageCheck /t REG_DWORD /d 1 /f</Path>
+        </RunSynchronousCommand>
+      </RunSynchronous>
+      <?END_HWREQ_SKIP?>
+    </component>
+  </settings>
+
+  <!-- Pass 2: specialize (system-wide defaults before OOBE) -->
+  <settings pass="specialize">
+    <component name="Microsoft-Windows-International-Core"
+               processorArchitecture="amd64"
+               publicKeyToken="31bf3856ad364e35"
+               language=""
+               versionScope="nonSxS">
+      <?BEGIN_LANG?>
+      <UILanguage>__LANG__</UILanguage>
+      <?END_LANG?>
+    </component>
+  </settings>
+
+  <?BEGIN_OOBE_SKIP?>
+  <!-- Pass 3: oobeSystem (final OOBE + user creation) -->
+  <settings pass="oobeSystem">
+    <component name="Microsoft-Windows-International-Core"
+               processorArchitecture="amd64"
+               publicKeyToken="31bf3856ad364e35"
+               language=""
+               versionScope="nonSxS">
+      <?BEGIN_LANG?>
+      <UILanguage>__LANG__</UILanguage>
+      <?END_LANG?>
+    </component>
+
+    <component name="Microsoft-Windows-Shell-Setup"
+               processorArchitecture="amd64"
+               publicKeyToken="31bf3856ad364e35"
+               language=""
+               versionScope="nonSxS">
+
+      <OOBE>
+        <HideEULAPage>true</HideEULAPage>
+        <SkipMachineOOBE>true</SkipMachineOOBE>
+        <SkipUserOOBE>true</SkipUserOOBE>
+        <HideOnlineAccountScreens>true</HideOnlineAccountScreens>
+        <ProtectYourPC>3</ProtectYourPC>
+      </OOBE>
+
+      <?BEGIN_LOCAL_USER?>
+      <UserAccounts>
+        <LocalAccounts>
+          <LocalAccount wcm:action="add">
+            <!-- Name must match AutoLogon Username exactly -->
+            <Name>__LOCAL_USER_NAME__</Name>
+            <Group>__LOCAL_USER_GROUP__</Group>
+            <Password>
+              <Value>__LOCAL_USER_PASSWORD__</Value>
+              <PlainText>true</PlainText>
+            </Password>
+            <DisplayName>__LOCAL_USER_DISPLAYNAME__</DisplayName>
+          </LocalAccount>
+        </LocalAccounts>
+      </UserAccounts>
+      <?END_LOCAL_USER?>
+
+      <?BEGIN_OWNER?>
+      <RegisteredOwner>__OWNER__</RegisteredOwner>
+      <?END_OWNER?>
+      <?BEGIN_ORG?>
+      <RegisteredOrganization>__ORG__</RegisteredOrganization>
+      <?END_ORG?>
+      <?BEGIN_TIMEZONE?>
+      <TimeZone>__TIMEZONE__</TimeZone>
+      <?END_TIMEZONE?>
+
+      <DisableAutoDaylightTimeSet>false</DisableAutoDaylightTimeSet>
+      <DoNotCleanTaskBar>true</DoNotCleanTaskBar>
+    </component>
+  </settings>
+  <?END_OOBE_SKIP?>
+</unattend>
+

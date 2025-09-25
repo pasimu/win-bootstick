@@ -1,0 +1,6 @@
+# user  [TAB] displayname     [TAB] group            [TAB] password     [TAB] owner       [TAB] org           [TAB] lang   [TAB] tz   [TAB] product_key
+local_user	Benutzer	Administratoren	Kennwort.01	Contoso IT	Contoso GmbH	de-DE	W. Europe Standard Time	VK7JG-NPHTM-C97JM-9MPGT-3V66T
+dev01	Max Mustermann	Administratoren	Dev.Kennwort.02	Contoso Dev	Contoso GmbH	de-DE	W. Europe Standard Time	W269N-WFGWX-YVC9B-4J6C9-T83GX
+helpdesk	Help Desk	Benutzer	Hd.Temp.03	IT Operations	Contoso GmbH	de-DE	W. Europe Standard Time	MH37W-N47XK-V7XM9-C7227-GCQG9
+
+
