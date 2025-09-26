@@ -8,7 +8,7 @@
 # @file     create-bootstick.sh
 # @brief    Windows 10/11 UEFI boot USB creator (GPT, FAT32-first) with XML template
 #
-# @version  1.1.2
+# @version  1.1.3
 # @author   pasimu
 # @date     2025-09-26
 
@@ -37,7 +37,7 @@ SCRIPT_DIR="${SCRIPT_PATH%/*}"
 [[ "$SCRIPT_DIR" == "$SCRIPT_PATH" ]] && SCRIPT_DIR="."
 SCRIPT_DIR="$(cd -- "$SCRIPT_DIR" && pwd -P)"
 
-VERSION="1.1.2"
+VERSION="1.1.3"
 declare -r SCRIPT_PATH SCRIPT_NAME SCRIPT_DIR VERSION
 
 ###############################################################################
@@ -63,6 +63,7 @@ INSTALL_DISK_ID="${INSTALL_DISK_ID:-}"
 HWREQ_SKIP="${HWREQ_SKIP:-true}"
 OOBE_SKIP="${OOBE_SKIP:-true}"
 AUTO_LOGON="${AUTO_LOGON:-true}"
+PRIVACY_HARDEN="${PRIVACY_HARDEN:-true}"
 PRODUCT_KEY="${PRODUCT_KEY:-}"
 LOCAL_USER_NAME="${LOCAL_USER_NAME:-}"
 LOCAL_USER_GROUP="${LOCAL_USER_GROUP:-}"
@@ -214,6 +215,7 @@ AUTOUNATTEND OPTIONS:
   --bypass-hw-reqs[=true|false]         Bypass Windows 11 HW requirements (current: $HWREQ_SKIP)
   --oobe-skip[=true|false]              Skip OOBE steps in template (current: $OOBE_SKIP)
   --auto-logon[=true|false]             Enable/Disable auto logon (current: $AUTO_LOGON)
+  --harden-privacy[=true|false]         Enable/Disable Windows Privacy hardening (current: $PRIVACY_HARDEN)
   --win-lang=TAG                        Install/UI language BCP-47 tag (current: $WINLANG)
   --product-key=KEY                     Product key (use generic/KMS if needed)
   --local-user-name=NAME                Local account name (current: $LOCAL_USER_NAME)
@@ -276,6 +278,7 @@ _parse_args() {
       --bypass-hw-reqs=*)         HWREQ_SKIP=${a#*=};;
       --oobe-skip=*)              OOBE_SKIP=${a#*=};;
       --auto-logon=*)             AUTO_LOGON=${a#*=};;
+      --harden-privacy=*)         PRIVACY_HARDEN=${a#*=};;
       --template=*)               TEMPLATE=${a#*=};;
       --install-disk-id=*)        INSTALL_DISK_ID=${a#*=};;
       --win-lang=*)               WINLANG=${a#*=};;
@@ -314,7 +317,7 @@ _parse_args() {
 _normalize_bools() {
   _log info "Normalizing booleans"
   local v
-  for v in NON_INTERACTIVE DRY_RUN AUTOUNATTEND HWREQ_SKIP OOBE_SKIP AUTO_LOGON; do
+  for v in NON_INTERACTIVE DRY_RUN AUTOUNATTEND HWREQ_SKIP OOBE_SKIP AUTO_LOGON PRIVACY_HARDEN; do
     case "${!v,,}" in
       1|true|yes|on)     printf -v "$v" 1 ;;
       0|false|no|off|'') printf -v "$v" 0 ;;
@@ -599,9 +602,10 @@ _build_autounattend_sed_script() {
         && -n ${LOCAL_USER_DISPLAYNAME-} \
         ]] && on=1; _toggle_pi LOCAL_USER "$on"
   
-  _toggle_pi HWREQ_SKIP $(( HWREQ_SKIP ? 1 : 0 ))
-  _toggle_pi OOBE_SKIP  $(( OOBE_SKIP  ? 1 : 0 ))
-  _toggle_pi AUTO_LOGON $(( AUTO_LOGON ? 1 : 0 ))
+  _toggle_pi HWREQ_SKIP     $(( HWREQ_SKIP     ? 1 : 0 ))
+  _toggle_pi OOBE_SKIP      $(( OOBE_SKIP      ? 1 : 0 ))
+  _toggle_pi AUTO_LOGON     $(( AUTO_LOGON     ? 1 : 0 ))
+  _toggle_pi PRIVACY_HARDEN $(( PRIVACY_HARDEN ? 1 : 0 ))
 
   # Placeholder substitutions
   while IFS=, read -r placeholder var; do
