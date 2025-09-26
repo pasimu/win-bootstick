@@ -8,7 +8,7 @@
 # @file     create-bootstick.sh
 # @brief    Windows 10/11 UEFI boot USB creator (GPT, FAT32-first) with XML template
 #
-# @version  1.1.3
+# @version  1.1.4
 # @author   pasimu
 # @date     2025-09-26
 
@@ -37,7 +37,7 @@ SCRIPT_DIR="${SCRIPT_PATH%/*}"
 [[ "$SCRIPT_DIR" == "$SCRIPT_PATH" ]] && SCRIPT_DIR="."
 SCRIPT_DIR="$(cd -- "$SCRIPT_DIR" && pwd -P)"
 
-VERSION="1.1.3"
+VERSION="1.1.4"
 declare -r SCRIPT_PATH SCRIPT_NAME SCRIPT_DIR VERSION
 
 ###############################################################################
@@ -57,13 +57,13 @@ ISO="${ISO:-}"
 TEMPLATES="${TEMPLATES:-${SCRIPT_DIR}/templates}"
 TEMPLATE="${TEMPLATE:-${TEMPLATES}/xml/win11-autounattend.xml}"
 
-AUTOUNATTEND="${AUTOUNATTEND:-true}"
+AUTOUNATTEND="${AUTOUNATTEND:-false}"
 AUTOUNATTEND_OUT="${AUTOUNATTEND_OUT:-}"
 INSTALL_DISK_ID="${INSTALL_DISK_ID:-}"
-HWREQ_SKIP="${HWREQ_SKIP:-true}"
-OOBE_SKIP="${OOBE_SKIP:-true}"
-AUTO_LOGON="${AUTO_LOGON:-true}"
-PRIVACY_HARDEN="${PRIVACY_HARDEN:-true}"
+HWREQ_SKIP="${HWREQ_SKIP:-false}"
+OOBE_SKIP="${OOBE_SKIP:-false}"
+AUTO_LOGON="${AUTO_LOGON:-false}"
+PRIVACY_HARDEN="${PRIVACY_HARDEN:-false}"
 PRODUCT_KEY="${PRODUCT_KEY:-}"
 LOCAL_USER_NAME="${LOCAL_USER_NAME:-}"
 LOCAL_USER_GROUP="${LOCAL_USER_GROUP:-}"
@@ -208,7 +208,7 @@ COMMON OPTIONS:
   --mode=[main|xml-only]                Select workflow (default: $MODE)
 
 AUTOUNATTEND OPTIONS:
-  --no-autounattend[=true|false]        Skip autounattend.xml installation (current: $AUTOUNATTEND)
+  --autounattend[=true|false]           Enable/Disable autounattend.xml installation (current: $AUTOUNATTEND)
   --autounattend-out=PATH               Output target (file or dir); enables XML-only mode
   --template=PATH                       Autounattend XML template (current: $TEMPLATE)
   --install-disk-id=<N>                 Wipe disk N and install there (Omit to disable - default)
@@ -245,21 +245,18 @@ ENV OVERRIDES:
   You may export any option name in uppercase (e.g., LOG_LEVEL=debug).
 
 EXAMPLES:
-  Basic autounattend.xml installation
-  sudo -E $SCRIPT_NAME --device=/dev/sdb --iso=~/Downloads/isos/Win11_24H2_German_x64.iso \\
-      --oobe-skip=false --bypass-hw-reqs=false --win-lang=de-DE \\
-      --non-interactive
+  Create a bootable stick
+  sudo -E ./create-bootstick.sh --device=/dev/sdb --iso=~/Downloads/isos/Win11_24H2_German_x64.iso
 
   Advanced autounattend.xml installation (using environment file in script dir)
-  ( set -a; . "$SCRIPT_DIR/default.env"; set +a; \\
-    sudo -E $SCRIPT_NAME --device=/dev/sdb --iso=~/Downloads/isos/Win11_24H2_German_x64.iso \\
-      --non-interactive )
+  ( set -a; . "./environments/default.env"; set +a; sudo -E ./create-bootstick.sh --device=/dev/sdb )
 
-  XML-only mode (generate autounattend.xml without touching a device; using environment file)
-  ( set -a; . "$SCRIPT_DIR/default.env"; set +a; \\
-    $SCRIPT_NAME --template=./templates/xml/win11-autounattend_hardened.xml \\
-      --autounattend-out=./autounattend.xml \\
-      --non-interactive )
+  Generate only autounattend.xml from a template
+  ( set -a; . "./environments/full-auto.env"; set +a; ./create-bootstick.sh --template=./templates/xml/win11-autounattend.xml --autounattend-out=./autounattend.xml )
+
+  4. Batch rendering with company.env, user list and product keys
+  This example generates multiple 'autounattend.xml' files using a shared environment file and a tab-separated user list.
+  ./examples/render-users.sh
 EOF
 }
 
@@ -443,9 +440,9 @@ _is_nonneg_int() {
 }
 
 _validate_template_inputs() {
+  (( AUTOUNATTEND == 0 )) && return
   _log info "Validating autounattend inputs"
   TEMPLATE="$(_expand_path "$TEMPLATE")"
-  (( AUTOUNATTEND == 0 )) && _die "AUTOUNATTEND is disabled"
   [[ -f "$TEMPLATE" && -r "$TEMPLATE" ]] || _die "Template not readable: $TEMPLATE"
   [[ -z $WINLANG ]]         || _is_bcp47_canonical "$WINLANG"    || _die "$WINLANG is not canonical BCP-47"
   [[ -z $INSTALL_DISK_ID ]] || _is_nonneg_int "$INSTALL_DISK_ID" || _die "$INSTALL_DISK_ID is negative"
@@ -510,8 +507,6 @@ _partition_gpt() {
   _log info "Partitioning GPT"
   _run parted -s -a optimal "$DEVICE" mklabel gpt
   _run parted -s "$DEVICE" mkpart "$PL_FAT" fat32 1MiB "${FAT_END_MIB}MiB"
-#  _run parted -s "$DEVICE" set 1 esp on
-#  _run parted -s "$DEVICE" set 1 boot on
   _run parted -s "$DEVICE" mkpart "$PL_NTFS" ntfs "${FAT_END_MIB}MiB" 100%
   _run parted "$DEVICE" unit B print
   _run sync
