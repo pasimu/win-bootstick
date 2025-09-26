@@ -59,6 +59,7 @@ TEMPLATE="${TEMPLATE:-${TEMPLATES}/xml/win11-autounattend.xml}"
 
 AUTOUNATTEND="${AUTOUNATTEND:-true}"
 AUTOUNATTEND_OUT="${AUTOUNATTEND_OUT:-}"
+INSTALL_DISK_ID="${INSTALL_DISK_ID:-}"
 HWREQ_SKIP="${HWREQ_SKIP:-true}"
 OOBE_SKIP="${OOBE_SKIP:-true}"
 PRODUCT_KEY="${PRODUCT_KEY:-}"
@@ -208,6 +209,7 @@ AUTOUNATTEND OPTIONS:
   --no-autounattend[=true|false]        Skip autounattend.xml installation (current: $AUTOUNATTEND)
   --autounattend-out=PATH               Output target (file or dir); enables XML-only mode
   --template=PATH                       Autounattend XML template (current: $TEMPLATE)
+  --install-disk-id=<N>                 Wipe disk N and install there (Omit to disable - default)
   --bypass-hw-reqs[=true|false]         Bypass Windows 11 HW requirements (current: $HWREQ_SKIP)
   --oobe-skip[=true|false]              Skip OOBE steps in template (current: $OOBE_SKIP)
   --win-lang=TAG                        Install/UI language BCP-47 tag (current: $WINLANG)
@@ -272,6 +274,7 @@ _parse_args() {
       --bypass-hw-reqs=*)         HWREQ_SKIP=${a#*=};;
       --oobe-skip=*)              OOBE_SKIP=${a#*=};;
       --template=*)               TEMPLATE=${a#*=};;
+      --install-disk-id=*)        INSTALL_DISK_ID=${a#*=};;
       --win-lang=*)               WINLANG=${a#*=};;
       --product-key=*)            PRODUCT_KEY=${a#*=};;
       --local-user-name=*)        LOCAL_USER_NAME=${a#*=};;
@@ -426,12 +429,20 @@ _expand_path() {
   realpath -m -- "$p" 2>/dev/null || { printf '%s\n' "$p"; _log debug "Expand path end (fallback)"; return 0; }
 }
 
+_is_nonneg_int() {
+  case "$1" in 
+    (''|*[!0-9]*) return 1;;
+    (*) return 0;;
+  esac;
+}
+
 _validate_template_inputs() {
   _log info "Validating autounattend inputs"
   TEMPLATE="$(_expand_path "$TEMPLATE")"
   (( AUTOUNATTEND == 0 )) && _die "AUTOUNATTEND is disabled"
   [[ -f "$TEMPLATE" && -r "$TEMPLATE" ]] || _die "Template not readable: $TEMPLATE"
-  [[ -z $WINLANG ]] || _is_bcp47_canonical "$WINLANG" || _die "$WINLANG is not canonical BCP-47"
+  [[ -z $WINLANG ]]         || _is_bcp47_canonical "$WINLANG"    || _die "$WINLANG is not canonical BCP-47"
+  [[ -z $INSTALL_DISK_ID ]] || _is_nonneg_int "$INSTALL_DISK_ID" || _die "$INSTALL_DISK_ID is negative"
 }
 
 _validate_inputs() {
@@ -573,25 +584,27 @@ _build_autounattend_sed_script() {
 
   # Section toggles
   local on
-  on=0; [[ -n ${WINLANG-}       ]] && on=1; _toggle_pi LANG        "$on"
-  on=0; [[ -n ${PRODUCT_KEY-}   ]] && on=1; _toggle_pi PRODUCT_KEY "$on"
-  on=0; [[ -n ${OWNER-}         ]] && on=1; _toggle_pi OWNER       "$on"
-  on=0; [[ -n ${ORG-}           ]] && on=1; _toggle_pi ORG         "$on"
-  on=0; [[ -n ${TIMEZONE-}      ]] && on=1; _toggle_pi TIMEZONE    "$on"
+  on=0; [[ -n ${WINLANG-}         ]] && on=1; _toggle_pi LANG           "$on"
+  on=0; [[ -n ${INSTALL_DISK_ID-} ]] && on=1; _toggle_pi DISK_SELECTION "$on"
+  on=0; [[ -n ${PRODUCT_KEY-}     ]] && on=1; _toggle_pi PRODUCT_KEY    "$on"
+  on=0; [[ -n ${OWNER-}           ]] && on=1; _toggle_pi OWNER          "$on"
+  on=0; [[ -n ${ORG-}             ]] && on=1; _toggle_pi ORG            "$on"
+  on=0; [[ -n ${TIMEZONE-}        ]] && on=1; _toggle_pi TIMEZONE       "$on"
   on=0; [[ -n ${LOCAL_USER_NAME-}        \
         && -n ${LOCAL_USER_GROUP-}       \
         && -n ${LOCAL_USER_PASSWORD-}    \
         && -n ${LOCAL_USER_DISPLAYNAME-} \
         ]] && on=1; _toggle_pi LOCAL_USER "$on"
-
-  _toggle_pi HWREQ_SKIP $(( HWREQ_SKIP ? 1 : 0 ))
-  _toggle_pi OOBE_SKIP  $(( OOBE_SKIP  ? 1 : 0 ))
+  
+  _toggle_pi HWREQ_SKIP     $(( HWREQ_SKIP      ? 1 : 0 ))
+  _toggle_pi OOBE_SKIP      $(( OOBE_SKIP       ? 1 : 0 ))
 
   # Placeholder substitutions
   while IFS=, read -r placeholder var; do
     [[ -z ${!var-} ]] && continue
     printf 's/%s/%s/g\n' "$placeholder" "$(_sed_escape "${!var}")" >>"$sed_script"
   done <<'EOF'
+__INSTALL_DISK_ID__,INSTALL_DISK_ID
 __PRODUCT_KEY__,PRODUCT_KEY
 __LOCAL_USER_NAME__,LOCAL_USER_NAME
 __LOCAL_USER_GROUP__,LOCAL_USER_GROUP
