@@ -2,7 +2,7 @@
 
 > **Document number:** BASH-2025-019<br>
 > **Author:** pasimu (Patrick Siegmund) - <patricksiegmund@gmx.de><br>
-> **Date:** 2025-09-25<br>
+> **Date:** 2025-09-26<br>
 
 ## Abstract
 
@@ -45,29 +45,28 @@ sudo -E ./create-bootstick.sh --device=/dev/sdX --iso=/path/to/win.iso [OPTIONS]
 
 Common options:
 
-- `--non-interactive` suppresses prompts
-- `--dry-run` prints actions without modifying devices
-- `--autounattend-out=` generates XML only (no device writes)
-- `--bypass-hw-reqs` toggles Windows 11 hardware requirement bypass
+```bash
+./create-bootstick.sh -h
+```
 
 ## Examples
 
-**1. Create a bootable stick with unattended install**
+**1. Create a bootable stick**
 
 ```bash
-sudo -E ./create-bootstick.sh --device=/dev/sdb --iso=~/Downloads/isos/Win11_24H2_German_x64.iso --oobe-skip=false --bypass-hw-reqs=false --win-lang=de-DE --non-interactive
+sudo -E ./create-bootstick.sh --device=/dev/sdb --iso=~/Downloads/isos/Win11_24H2_German_x64.iso --non-interactive
 ```
 
 **2. Advanced autounattend.xml installation (using environment file in script dir)**
 
 ```bash
-( set -a; . "./default.env"; set +a; sudo -E ./create-bootstick.sh --device=/dev/sdb )
+( set -a; . "./environments/default.env"; set +a; sudo -E ./create-bootstick.sh --device=/dev/sdb )
 ```
 
 **3. Generate only autounattend.xml from a template**
 
 ```bash
-./create-bootstick.sh --template=./templates/xml/win11-autounattend.xml --autounattend-out=./autounattend.xml --non-interactive
+( set -a; . "./environments/full-auto.env"; set +a; ./create-bootstick.sh --template=./templates/xml/win11-autounattend.xml --autounattend-out=./autounattend.xml )
 ```
 
 **4. Batch rendering with company.env, user list and product keys**
