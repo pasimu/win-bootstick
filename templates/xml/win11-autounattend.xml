@@ -163,7 +163,6 @@
       <UserAccounts>
         <LocalAccounts>
           <LocalAccount wcm:action="add">
-            <!-- Name must match AutoLogon Username exactly -->
             <Name>__LOCAL_USER_NAME__</Name>
             <Group>__LOCAL_USER_GROUP__</Group>
             <Password>
@@ -188,6 +187,14 @@
 
       <DisableAutoDaylightTimeSet>false</DisableAutoDaylightTimeSet>
       <DoNotCleanTaskBar>true</DoNotCleanTaskBar>
+
+      <?BEGIN_AUTO_LOGON?>
+      <AutoLogon>
+        <Enabled>true</Enabled>
+        <Username>__LOCAL_USER_NAME__</Username>
+        <Password><Value>__LOCAL_USER_PASSWORD__</Value><PlainText>true</PlainText></Password>
+      </AutoLogon>
+      <?END_AUTO_LOGON?>
     </component>
   </settings>
   <?END_OOBE_SKIP?>
