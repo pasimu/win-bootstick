@@ -8,9 +8,9 @@
 # @file     create-bootstick.sh
 # @brief    Windows 10/11 UEFI boot USB creator (GPT, FAT32-first) with XML template
 #
-# @version  1.1.0
+# @version  1.1.2
 # @author   pasimu
-# @date     2025-09-25
+# @date     2025-09-26
 
 set -Eeuo pipefail
 set -o errtrace
@@ -37,7 +37,7 @@ SCRIPT_DIR="${SCRIPT_PATH%/*}"
 [[ "$SCRIPT_DIR" == "$SCRIPT_PATH" ]] && SCRIPT_DIR="."
 SCRIPT_DIR="$(cd -- "$SCRIPT_DIR" && pwd -P)"
 
-VERSION="1.1.0"
+VERSION="1.1.2"
 declare -r SCRIPT_PATH SCRIPT_NAME SCRIPT_DIR VERSION
 
 ###############################################################################
@@ -62,6 +62,7 @@ AUTOUNATTEND_OUT="${AUTOUNATTEND_OUT:-}"
 INSTALL_DISK_ID="${INSTALL_DISK_ID:-}"
 HWREQ_SKIP="${HWREQ_SKIP:-true}"
 OOBE_SKIP="${OOBE_SKIP:-true}"
+AUTO_LOGON="${AUTO_LOGON:-true}"
 PRODUCT_KEY="${PRODUCT_KEY:-}"
 LOCAL_USER_NAME="${LOCAL_USER_NAME:-}"
 LOCAL_USER_GROUP="${LOCAL_USER_GROUP:-}"
@@ -212,6 +213,7 @@ AUTOUNATTEND OPTIONS:
   --install-disk-id=<N>                 Wipe disk N and install there (Omit to disable - default)
   --bypass-hw-reqs[=true|false]         Bypass Windows 11 HW requirements (current: $HWREQ_SKIP)
   --oobe-skip[=true|false]              Skip OOBE steps in template (current: $OOBE_SKIP)
+  --auto-logon[=true|false]             Enable/Disable auto logon (current: $AUTO_LOGON)
   --win-lang=TAG                        Install/UI language BCP-47 tag (current: $WINLANG)
   --product-key=KEY                     Product key (use generic/KMS if needed)
   --local-user-name=NAME                Local account name (current: $LOCAL_USER_NAME)
@@ -273,6 +275,7 @@ _parse_args() {
       --autounattend-out=*)       AUTOUNATTEND_OUT=${a#*=};;
       --bypass-hw-reqs=*)         HWREQ_SKIP=${a#*=};;
       --oobe-skip=*)              OOBE_SKIP=${a#*=};;
+      --auto-logon=*)             AUTO_LOGON=${a#*=};;
       --template=*)               TEMPLATE=${a#*=};;
       --install-disk-id=*)        INSTALL_DISK_ID=${a#*=};;
       --win-lang=*)               WINLANG=${a#*=};;
@@ -311,7 +314,7 @@ _parse_args() {
 _normalize_bools() {
   _log info "Normalizing booleans"
   local v
-  for v in NON_INTERACTIVE DRY_RUN AUTOUNATTEND HWREQ_SKIP OOBE_SKIP; do
+  for v in NON_INTERACTIVE DRY_RUN AUTOUNATTEND HWREQ_SKIP OOBE_SKIP AUTO_LOGON; do
     case "${!v,,}" in
       1|true|yes|on)     printf -v "$v" 1 ;;
       0|false|no|off|'') printf -v "$v" 0 ;;
@@ -596,8 +599,9 @@ _build_autounattend_sed_script() {
         && -n ${LOCAL_USER_DISPLAYNAME-} \
         ]] && on=1; _toggle_pi LOCAL_USER "$on"
   
-  _toggle_pi HWREQ_SKIP     $(( HWREQ_SKIP      ? 1 : 0 ))
-  _toggle_pi OOBE_SKIP      $(( OOBE_SKIP       ? 1 : 0 ))
+  _toggle_pi HWREQ_SKIP $(( HWREQ_SKIP ? 1 : 0 ))
+  _toggle_pi OOBE_SKIP  $(( OOBE_SKIP  ? 1 : 0 ))
+  _toggle_pi AUTO_LOGON $(( AUTO_LOGON ? 1 : 0 ))
 
   # Placeholder substitutions
   while IFS=, read -r placeholder var; do
