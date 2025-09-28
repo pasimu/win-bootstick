@@ -576,10 +576,10 @@ _build_autounattend_sed_script() {
         && -n ${LOCAL_USER_DISPLAYNAME-} \
         ]] && on=1; _toggle_pi LOCAL_USER "$on"
   
-  _toggle_pi HWREQ_SKIP     $(( HWREQ_SKIP     ? 1 : 0 ))
-  _toggle_pi OOBE_SKIP      $(( OOBE_SKIP      ? 1 : 0 ))
-  _toggle_pi AUTO_LOGON     $(( AUTO_LOGON     ? 1 : 0 ))
-  _toggle_pi PRIVACY_HARDEN $(( PRIVACY_HARDEN ? 1 : 0 ))
+  _toggle_pi AUTO_LOGON     $(( AUTO_LOGON && on ? 1 : 0 ))
+  _toggle_pi HWREQ_SKIP     $(( HWREQ_SKIP       ? 1 : 0 ))
+  _toggle_pi OOBE_SKIP      $(( OOBE_SKIP        ? 1 : 0 ))
+  _toggle_pi PRIVACY_HARDEN $(( PRIVACY_HARDEN   ? 1 : 0 ))
 
   # Placeholder substitutions
   while IFS=, read -r placeholder var; do
