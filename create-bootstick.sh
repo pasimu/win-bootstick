@@ -81,10 +81,6 @@ FAT_END_MIB="${FAT_END_MIB:-1025}"
 PL_NTFS="${PL_NTFS:-WINPAYLOAD}"
 PL_FAT="${PL_FAT:-WINESP}"
 
-MNT_ISO="${MNT_ISO:-$HOME/iso}"
-MNT_FAT="${MNT_FAT:-$HOME/usb1}"
-MNT_NTFS="${MNT_NTFS:-$HOME/usb2}"
-
 P_NTFS=""
 P_FAT=""
 
@@ -175,7 +171,7 @@ _check_required_commands() {
       required_commands=(
         mktemp lsblk sgdisk wipefs parted blockdev partprobe udevadm readlink
         mkfs.fat mkfs.ntfs mount rsync install sed realpath flock id sync mkdir
-        findmnt stat sleep
+        findmnt stat sleep losetup unshare mountpoint
       )
       ;;
     *)
@@ -232,9 +228,6 @@ ADVANCED:
   --ntfs-label=LBL                      NTFS label (current: $NTFS_LABEL)
   --pl-fat=NAME                         FAT32 partlabel (current: $PL_FAT)
   --pl-ntfs=NAME                        NTFS partlabel (current: $PL_NTFS)
-  --mount-iso=DIR                       ISO mount dir (current: $MNT_ISO)
-  --mount-fat=DIR                       FAT32 mount dir (current: $MNT_FAT)
-  --mount-ntfs=DIR                      NTFS mount dir (current: $MNT_NTFS)
 
 FLAGS:
   -D, --list-devices
@@ -292,9 +285,6 @@ _parse_args() {
       --ntfs-label=*)             NTFS_LABEL=${a#*=};;
       --pl-fat=*)                 PL_FAT=${a#*=};;
       --pl-ntfs=*)                PL_NTFS=${a#*=};;
-      --mount-iso=*)              MNT_ISO=${a#*=};;
-      --mount-fat=*)              MNT_FAT=${a#*=};;
-      --mount-ntfs=*)             MNT_NTFS=${a#*=};;
       --dry-run)                  DRY_RUN=1;;
       --dry-run=*)                DRY_RUN=${a#*=};;
       --non-interactive)          NON_INTERACTIVE=1;;
@@ -386,9 +376,6 @@ _print_config() {
     printf '  FAT_END_MIB=%s\n'             "$FAT_END_MIB"
     printf '  PL_FAT=%s\n'                  "$PL_FAT"
     printf '  PL_NTFS=%s\n'                 "$PL_NTFS"
-    printf '  MNT_ISO=%s\n'                 "$MNT_ISO"
-    printf '  MNT_FAT=%s\n'                 "$MNT_FAT"
-    printf '  MNT_NTFS=%s\n'                "$MNT_NTFS"
     printf '  P_FAT=%s\n'                   "${P_FAT:-}"
     printf '  P_NTFS=%s\n'                  "${P_NTFS:-}"
   } >&2
@@ -398,10 +385,12 @@ _init() {
   _log info "Initializing"
   umask 077
   TMP_DIR="$(mktemp -d "${TMPDIR:-/tmp}/${SCRIPT_NAME%%.*}.XXXXXX")"; : "${TMP_DIR:?}"
-  MNT_ISO="$TMP_DIR/${MNT_ISO##*/}"
-  MNT_FAT="$TMP_DIR/${MNT_FAT##*/}"
-  MNT_NTFS="$TMP_DIR/${MNT_NTFS##*/}"
-  declare -r MNT_ISO MNT_FAT MNT_NTFS
+  RUN_DIR="$TMP_DIR/mnt"
+  MNT_ISO="$RUN_DIR/iso"
+  MNT_FAT="$RUN_DIR/fat"
+  MNT_NTFS="$RUN_DIR/ntfs"
+  _run mkdir -p "$RUN_DIR" "$MNT_ISO" "$MNT_FAT" "$MNT_NTFS"
+  declare -r RUN_DIR MNT_ISO MNT_FAT MNT_NTFS
 
   if [[ "$MODE" == "main" ]]; then
     LOCKFILE="/tmp/${SCRIPT_NAME}.$(basename "$DEVICE" | tr / _).${EUID}.lock"
@@ -543,7 +532,6 @@ _format_filesystems() {
 
 _mount_all() {
   _log info "Mounting filesystems"
-  _run mkdir -p "$MNT_ISO" "$MNT_FAT" "$MNT_NTFS"
   _run mount -o ro,loop,nosuid,nodev,noexec "$ISO" "$MNT_ISO"
   _run mount -o uid="$(id -u)",gid="$(id -g)",umask=022,nosuid,nodev "$P_FAT" "$MNT_FAT"
   _run mount -o uid="$(id -u)",gid="$(id -g)",umask=022,nosuid,nodev,big_writes,prealloc "$P_NTFS" "$MNT_NTFS"
