@@ -171,7 +171,7 @@ _check_required_commands() {
       required_commands=(
         mktemp lsblk sgdisk wipefs parted blockdev partprobe udevadm readlink
         mkfs.fat mkfs.ntfs mount rsync install sed realpath flock id sync mkdir
-        findmnt stat sleep losetup unshare mountpoint
+        findmnt stat sleep
       )
       ;;
     *)
@@ -502,25 +502,15 @@ _partition_gpt() {
   _run blockdev --rereadpt "$DEVICE" 2>/dev/null || true
   _run partprobe "$DEVICE" 2>/dev/null || true
   _run udevadm settle 2>/dev/null || true
-}
 
-_resolve_partnodes() {
-  _log info "Resolving partition nodes"
-  local byp_ntfs="/dev/disk/by-partlabel/$PL_NTFS"
-  local byp_fat="/dev/disk/by-partlabel/$PL_FAT"
-  local -i attempts=50
-
-  while (( attempts-- > 0 )); do
-    if [[ -e "$byp_ntfs" && -e "$byp_fat" ]]; then
-      P_NTFS="$byp_ntfs"
-      P_FAT="$byp_fat"
-      _log info "Resolved (by-partlabel): NTFS=$P_NTFS FAT32(ESP)=$P_FAT"
-      return 0
-    fi
-    _run udevadm settle 2>/dev/null || true
-    sleep 0.1
-  done
-  _die "Could not resolve partitions for labels $PL_NTFS / $PL_FAT"
+  if [[ "$DEVICE" =~ [0-9]$ ]]; then
+    P_FAT="${DEVICE}p1"
+    P_NTFS="${DEVICE}p2"
+  else
+    P_FAT="${DEVICE}1"
+    P_NTFS="${DEVICE}2"
+  fi
+  _log info "Partitions ready: FAT32(ESP)=$P_FAT NTFS=$P_NTFS"
 }
 
 _format_filesystems() {
@@ -676,7 +666,6 @@ main() {
 
   _wipe_signatures
   _partition_gpt
-  _resolve_partnodes
   _format_filesystems
   _mount_all
   _copy_payload
