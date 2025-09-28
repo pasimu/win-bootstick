@@ -333,12 +333,13 @@ _normalize_mode() {
     *) _die "Invalid MODE: $MODE (expected main|xml-only)";;
   esac
 
-  if [[ "$MODE" == "main" && -n "$AUTOUNATTEND_OUT" ]]; then
-    MODE="xml-only"
-  fi
+  [[ -n "$AUTOUNATTEND_OUT" ]] && MODE="xml-only"
 
-  if [[ "$MODE" == "xml-only" && -n "$AUTOUNATTEND_OUT" ]]; then
-    if [[ -d "$AUTOUNATTEND_OUT" || "$AUTOUNATTEND_OUT" == */ ]]; then
+  if [[ "$MODE" == "xml-only" ]]; then
+    AUTOUNATTEND=1
+    if [[ -z "$AUTOUNATTEND_OUT" ]]; then
+      AUTOUNATTEND_OUT="$SCRIPT_DIR/autounattend.xml"
+    elif [[ -d "$AUTOUNATTEND_OUT" || "$AUTOUNATTEND_OUT" == */ ]]; then
       AUTOUNATTEND_OUT="${AUTOUNATTEND_OUT%/}/autounattend.xml"
     fi
   fi
